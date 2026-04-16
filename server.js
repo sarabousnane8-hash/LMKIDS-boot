@@ -1,8 +1,11 @@
 const express = require('express');
+const path = require('path');
+
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static(path.join(__dirname)));
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -10,7 +13,7 @@ app.post('/api/chat', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': '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',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify(req.body)
@@ -18,8 +21,15 @@ app.post('/api/chat', async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log('Server running on port ' + PORT);
+});ر
