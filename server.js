@@ -1,50 +1,25 @@
 const express = require('express');
-const path = require('path');
-const https = require('https');
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+app.use(express.static('.'));
 
-app.post('/api/chat', (req, res) => {
-  const body = JSON.stringify(req.body);
-  const options = {
-    hostname: 'api.anthropic.com',
-    path: '/v1/messages',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'Content-Length': Buffer.byteLength(body)
-    }
-  };
-
-  const request = https.request(options, (response) => {
-    let data = '';
-    response.on('data', (chunk) => { data += chunk; });
-    response.on('end', () => {
-      try {
-        res.json(JSON.parse(data));
-      } catch(e) {
-        res.status(500).json({ error: 'Parse error' });
-      }
+app.post('/api/chat', async (req, res) => {
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': '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',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(req.body)
     });
-  });
-
-  request.on('error', (e) => {
-    res.status(500).json({ error: e.message });
-  });
-
-  request.write(body);
-  request.end();
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log('Server running on port ' + PORT);
-});
+app.listen(3000, () => console.log('Server running on port 3000'));
