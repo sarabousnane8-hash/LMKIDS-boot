@@ -1,31 +1,44 @@
 const express = require('express');
 const path = require('path');
+const https = require('https');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-app.post('/api/chat', async (req, res) => {
-  try {
-    const https = await import('node-fetch').catch(() => null);
-    const fetchFn = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default;
-    
-    const response = await fetchFn('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(req.body)
+app.post('/api/chat', (req, res) => {
+  const body = JSON.stringify(req.body);
+  const options = {
+    hostname: 'api.anthropic.com',
+    path: '/v1/messages',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
+
+  const request = https.request(options, (response) => {
+    let data = '';
+    response.on('data', (chunk) => { data += chunk; });
+    response.on('end', () => {
+      try {
+        res.json(JSON.parse(data));
+      } catch(e) {
+        res.status(500).json({ error: 'Parse error' });
+      }
     });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error('Error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
+  });
+
+  request.on('error', (e) => {
+    res.status(500).json({ error: e.message });
+  });
+
+  request.write(body);
+  request.end();
 });
 
 app.get('*', (req, res) => {
